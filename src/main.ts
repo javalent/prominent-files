@@ -1,4 +1,11 @@
-import { App, Notice, Plugin, setIcon } from "obsidian";
+import {
+    Notice,
+    Plugin,
+    setIcon,
+    TAbstractFile,
+    View,
+    WorkspaceLeaf
+} from "obsidian";
 import { around } from "monkey-around";
 
 import "./main.css";
@@ -37,14 +44,22 @@ declare module "obsidian" {
             loadPlugin(...args: any[]): any;
         };
     }
-    interface WorkspaceLeaf {
-        containerEl: HTMLElement;
+    interface TAbstractFile {
+        titleEl: HTMLElement;
     }
+}
+interface FileExplorerWorkspaceLeaf extends WorkspaceLeaf {
+    containerEl: HTMLElement;
+    view: FileExplorerView;
+}
+
+interface FileExplorerView extends View {
+    fileItems: { [path: string]: TAbstractFile };
 }
 
 export default class ProminentStarredFiles extends Plugin {
     handler: () => void;
-    files: Set<StarredFile> = new Set();
+    files: Set<string> = new Set();
     get enabled() {
         return this.app.internalPlugins.getPluginById("starred").enabled;
     }
@@ -56,7 +71,9 @@ export default class ProminentStarredFiles extends Plugin {
         return this.starred.instance;
     }
     get fileExplorers() {
-        return this.app.workspace.getLeavesOfType("file-explorer");
+        return this.app.workspace.getLeavesOfType(
+            "file-explorer"
+        ) as FileExplorerWorkspaceLeaf[];
     }
     async onload() {
         console.log("Prominent Starred Files plugin loaded");
@@ -151,17 +168,20 @@ export default class ProminentStarredFiles extends Plugin {
         });
         this.register(this.handler);
     }
-    applyStar(file: StarredFile) {
+    applyStar(file: StarredFile, el?: HTMLElement) {
         if (!this.fileExplorers.length) return;
-        if (this.files.has(file)) return;
-
-        this.files.add(file);
+        if (this.files.has(file.path)) return;
 
         for (let explorer of this.fileExplorers) {
-            const element = explorer.containerEl.querySelector(
-                `.nav-file-title[data-path="${file.path}"]`
-            );
+            const element =
+                el ??
+                explorer.view?.fileItems?.[file.path]?.titleEl ??
+                explorer.containerEl.querySelector(
+                    `.nav-file-title[data-path="${file}"]`
+                );
             if (!element) continue;
+
+            this.files.add(file.path);
 
             setIcon(element.createDiv("prominent-star"), "star-glyph");
         }
@@ -169,13 +189,12 @@ export default class ProminentStarredFiles extends Plugin {
     removeStar(file: StarredFile) {
         if (!this.fileExplorers.length) return;
 
-        this.files.delete(file);
-
         for (let explorer of this.fileExplorers) {
             const element = explorer.containerEl.querySelector(
                 `.nav-file-title[data-path="${file.path}"]`
             );
             if (!element) continue;
+            this.files.delete(file.path);
 
             const stars = element.querySelectorAll(".prominent-star");
             if (stars.length) stars.forEach((star) => star.detach());
