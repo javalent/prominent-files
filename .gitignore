@@ -4,11 +4,10 @@
 
 # npm
 node_modules
-package-lock.json
 
 # build
 main.js
 *.js.map
 .DS_Store
 *build.js
-rollup.config-dev.js
+*dev.js

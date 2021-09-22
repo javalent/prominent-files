@@ -1,10 +1,10 @@
 {
-	"id": "obsidian-prominent-starred-files",
-	"name": "Prominent Starred Files",
-	"version": "0.0.1",
-	"minAppVersion": "0.11.0",
-	"description": "Prominently display starred files in Obsidian.md",
-	"author": "Jeremy Valentine",
-	"authorUrl": "",
-	"isDesktopOnly": true
+    "id": "obsidian-prominent-starred-files",
+    "name": "Prominent Starred Notes",
+    "version": "0.0.1",
+    "minAppVersion": "0.12.15",
+    "description": "Prominently display starred notes in Obsidian.md",
+    "author": "Jeremy Valentine",
+    "authorUrl": "",
+    "isDesktopOnly": true
 }
