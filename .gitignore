@@ -11,3 +11,5 @@ main.js
 .DS_Store
 *build.js
 *dev.js
+
+.env

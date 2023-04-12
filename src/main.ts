@@ -8,8 +8,6 @@ import {
 } from "obsidian";
 import { around } from "monkey-around";
 
-import "./main.css";
-
 interface InternalPlugin {
     enabled: boolean;
     enable: (b: boolean) => void;
@@ -25,12 +23,12 @@ interface Starred extends InternalPlugin {
 interface FileExplorer extends InternalPlugin {}
 
 interface StarredFile {
-    type: "file";
-    title: string;
+    type: "file" | "folder";
     path: string;
 }
 interface InternalPlugins {
     starred: Starred;
+    bookmarks: Starred;
     "file-explorer": FileExplorer;
 }
 
@@ -58,17 +56,28 @@ interface FileExplorerView extends View {
 }
 
 export default class ProminentStarredFiles extends Plugin {
-    handler: () => void;
+    starredHandler: () => void;
+    bookmarkHandler: () => void;
     files: Set<string> = new Set();
-    get enabled() {
+    get starredEnabled() {
         return this.app.internalPlugins.getPluginById("starred").enabled;
+    }
+    get bookmarksEnabled() {
+        return this.app.internalPlugins.getPluginById("bookmarks").enabled;
     }
     get starred() {
         return this.app.internalPlugins.getPluginById("starred");
     }
-    get instance() {
-        if (!this.enabled) return;
+    get bookmarks() {
+        return this.app.internalPlugins.getPluginById("bookmarks");
+    }
+    get starredInstance() {
+        if (!this.starredEnabled) return;
         return this.starred.instance;
+    }
+    get bookmarkInstance() {
+        if (!this.bookmarksEnabled) return;
+        return this.bookmarks.instance;
     }
     get fileExplorers() {
         return this.app.workspace.getLeavesOfType(
@@ -119,27 +128,60 @@ export default class ProminentStarredFiles extends Plugin {
                     enable: function (next) {
                         return function (b) {
                             const apply = next.call(this, b);
+                            if (this.bookmarksEnabled) return apply;
                             self.registerHandlers();
-                            for (let item of self.instance?.items ?? []) {
-                                self.applyStar(item);
+                            for (let item of self.starredInstance?.items ??
+                                []) {
+                                self.setIcon(item, "star-glyph");
                             }
                             return apply;
                         };
                     },
                     disable: function (next) {
                         return function (b) {
-                            self.handler();
-                            for (let item of self.instance?.items ?? []) {
-                                self.removeStar(item);
+                            self.starredHandler();
+                            for (let item of self.starredInstance?.items ??
+                                []) {
+                                self.removeIcon(item);
                             }
                             return next.call(this, b);
                         };
                     }
                 })
             );
-            if (!this.enabled) {
+            this.register(
+                around(this.bookmarks, {
+                    enable: function (next) {
+                        return function (b) {
+                            const apply = next.call(this, b);
+                            for (let file of self.starredInstance?.items ??
+                                []) {
+                                self.removeIcon(file);
+                            }
+                            self.registerHandlers();
+                            for (let item of self.bookmarkInstance?.items ??
+                                []) {
+                                self.setIcon(item, "bookmark");
+                            }
+                            return apply;
+                        };
+                    },
+                    disable: function (next) {
+                        return function (b) {
+                            self.bookmarkHandler();
+                            self.registerHandlers();
+                            for (let item of self.bookmarkInstance?.items ??
+                                []) {
+                                self.removeIcon(item);
+                            }
+                            return next.call(this, b);
+                        };
+                    }
+                })
+            );
+            if (!this.starredEnabled && !this.bookmarksEnabled) {
                 new Notice(
-                    "The Starred core plugin must be enabled to use this plugin."
+                    "The Starred or Bookmarks core plugin must be enabled to use this plugin."
                 );
             } else {
                 this.registerHandlers();
@@ -148,27 +190,55 @@ export default class ProminentStarredFiles extends Plugin {
     }
     registerHandlers() {
         const self = this;
-        for (let item of this.instance?.items ?? []) {
-            this.applyStar(item);
+        if (this.starredEnabled && !this.bookmarksEnabled) {
+            for (let item of this.starredInstance?.items ?? []) {
+                this.setIcon(item, "star-glyph");
+            }
+
+            this.starredHandler = around(this.starred.instance, {
+                addItem: function (next) {
+                    return function (file) {
+                        self.setIcon(file, "star-glyph");
+                        return next.call(this, file);
+                    };
+                },
+                removeItem: function (next) {
+                    return function (file) {
+                        self.removeIcon(file);
+                        return next.call(this, file);
+                    };
+                }
+            });
+            this.register(this.starredHandler);
         }
 
-        this.handler = around(this.starred.instance, {
-            addItem: function (next) {
-                return function (file) {
-                    self.applyStar(file);
-                    return next.call(this, file);
-                };
-            },
-            removeItem: function (next) {
-                return function (file) {
-                    self.removeStar(file);
-                    return next.call(this, file);
-                };
+        if (this.bookmarksEnabled) {
+            for (let item of this.bookmarkInstance?.items ?? []) {
+                this.setIcon(item, "bookmark");
             }
-        });
-        this.register(this.handler);
+
+            this.bookmarkHandler = around(this.bookmarks.instance, {
+                addItem: function (next) {
+                    return function (file) {
+                        self.setIcon(file, "bookmark");
+                        return next.call(this, file);
+                    };
+                },
+                removeItem: function (next) {
+                    return function (file) {
+                        self.removeIcon(file);
+                        return next.call(this, file);
+                    };
+                }
+            });
+            this.register(this.bookmarkHandler);
+        }
     }
-    applyStar(file: StarredFile, el?: HTMLElement) {
+    setIcon(
+        file: StarredFile,
+        icon: "star-glyph" | "bookmark",
+        el?: HTMLElement
+    ) {
         if (!this.fileExplorers.length) return;
         if (this.files.has(file.path)) return;
 
@@ -177,33 +247,36 @@ export default class ProminentStarredFiles extends Plugin {
                 el ??
                 explorer.view?.fileItems?.[file.path]?.titleEl ??
                 explorer.containerEl.querySelector(
-                    `.nav-file-title[data-path="${file}"]`
+                    `.nav-${file.type}-title[data-path="${file.path}"]`
                 );
             if (!element) continue;
 
             this.files.add(file.path);
 
-            setIcon(element.createDiv("prominent-star"), "star-glyph");
+            setIcon(element.createDiv("prominent-decorated-file"), icon);
         }
     }
-    removeStar(file: StarredFile) {
+    removeIcon(file: StarredFile) {
         if (!this.fileExplorers.length) return;
 
         for (let explorer of this.fileExplorers) {
             const element = explorer.containerEl.querySelector(
-                `.nav-file-title[data-path="${file.path}"]`
+                `.nav-${file.type}-title[data-path="${file.path}"]`
             );
             if (!element) continue;
             this.files.delete(file.path);
 
-            const stars = element.querySelectorAll(".prominent-star");
+            const stars = element.querySelectorAll(".prominent-decorated-file");
             if (stars.length) stars.forEach((star) => star.detach());
         }
     }
     onunload() {
         console.log("Prominent Starred Files plugin unloaded");
-        for (let file of this.instance?.items ?? []) {
-            this.removeStar(file);
+        for (let file of this.starredInstance?.items ?? []) {
+            this.removeIcon(file);
+        }
+        for (let file of this.bookmarkInstance?.items ?? []) {
+            this.removeIcon(file);
         }
     }
 }
