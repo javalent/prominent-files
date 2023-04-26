@@ -1,6 +1,6 @@
 {
     "name": "obsidian-prominent-starred-files",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "description": "Prominently display starred files in Obsidian.md",
     "main": "main.js",
     "scripts": {
