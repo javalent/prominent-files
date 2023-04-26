@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.2](https://github.com/javalent/prominent-files/compare/2.0.1...2.0.2) (2023-04-26)
+
+
+### Bug Fixes
+
+* rename plugin to Bookmarked ([7c3d2d8](https://github.com/javalent/prominent-files/commit/7c3d2d8212f6a37b38f597efca0441c2baf8c502))
+
 ## [2.0.1](https://github.com/javalent/prominent-files/compare/2.0.0...2.0.1) (2023-04-26)
 
 

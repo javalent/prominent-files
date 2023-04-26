@@ -1,7 +1,7 @@
 {
     "id": "obsidian-prominent-starred-files",
     "name": "Prominent Bookmarked Files",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "minAppVersion": "1.2.6",
     "description": "Prominently display bookmarked notes in the file explorer",
     "author": "Jeremy Valentine",
