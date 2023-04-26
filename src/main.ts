@@ -56,24 +56,13 @@ interface FileExplorerView extends View {
 }
 
 export default class ProminentStarredFiles extends Plugin {
-    starredHandler: () => void;
     bookmarkHandler: () => void;
     files: Set<string> = new Set();
-    get starredEnabled() {
-        return this.app.internalPlugins.getPluginById("starred").enabled;
-    }
     get bookmarksEnabled() {
         return this.app.internalPlugins.getPluginById("bookmarks").enabled;
     }
-    get starred() {
-        return this.app.internalPlugins.getPluginById("starred");
-    }
     get bookmarks() {
         return this.app.internalPlugins.getPluginById("bookmarks");
-    }
-    get starredInstance() {
-        if (!this.starredEnabled) return;
-        return this.starred.instance;
     }
     get bookmarkInstance() {
         if (!this.bookmarksEnabled) return;
@@ -124,40 +113,10 @@ export default class ProminentStarredFiles extends Plugin {
             }
 
             this.register(
-                around(this.starred, {
-                    enable: function (next) {
-                        return function (b) {
-                            const apply = next.call(this, b);
-                            if (this.bookmarksEnabled) return apply;
-                            self.registerHandlers();
-                            for (let item of self.starredInstance?.items ??
-                                []) {
-                                self.setIcon(item, "star-glyph");
-                            }
-                            return apply;
-                        };
-                    },
-                    disable: function (next) {
-                        return function (b) {
-                            self.starredHandler();
-                            for (let item of self.starredInstance?.items ??
-                                []) {
-                                self.removeIcon(item);
-                            }
-                            return next.call(this, b);
-                        };
-                    }
-                })
-            );
-            this.register(
                 around(this.bookmarks, {
                     enable: function (next) {
                         return function (b) {
                             const apply = next.call(this, b);
-                            for (let file of self.starredInstance?.items ??
-                                []) {
-                                self.removeIcon(file);
-                            }
                             self.registerHandlers();
                             for (let item of self.bookmarkInstance?.items ??
                                 []) {
@@ -179,9 +138,9 @@ export default class ProminentStarredFiles extends Plugin {
                     }
                 })
             );
-            if (!this.starredEnabled && !this.bookmarksEnabled) {
+            if (!!this.bookmarksEnabled) {
                 new Notice(
-                    "The Starred or Bookmarks core plugin must be enabled to use this plugin."
+                    "The Bookmarks core plugin must be enabled to use this plugin."
                 );
             } else {
                 this.registerHandlers();
@@ -190,27 +149,6 @@ export default class ProminentStarredFiles extends Plugin {
     }
     registerHandlers() {
         const self = this;
-        if (this.starredEnabled && !this.bookmarksEnabled) {
-            for (let item of this.starredInstance?.items ?? []) {
-                this.setIcon(item, "star-glyph");
-            }
-
-            this.starredHandler = around(this.starred.instance, {
-                addItem: function (next) {
-                    return function (file) {
-                        self.setIcon(file, "star-glyph");
-                        return next.call(this, file);
-                    };
-                },
-                removeItem: function (next) {
-                    return function (file) {
-                        self.removeIcon(file);
-                        return next.call(this, file);
-                    };
-                }
-            });
-            this.register(this.starredHandler);
-        }
 
         if (this.bookmarksEnabled) {
             for (let item of this.bookmarkInstance?.items ?? []) {
@@ -271,10 +209,7 @@ export default class ProminentStarredFiles extends Plugin {
         }
     }
     onunload() {
-        console.log("Prominent Starred Files plugin unloaded");
-        for (let file of this.starredInstance?.items ?? []) {
-            this.removeIcon(file);
-        }
+        console.log("Prominent Files plugin unloaded");
         for (let file of this.bookmarkInstance?.items ?? []) {
             this.removeIcon(file);
         }
