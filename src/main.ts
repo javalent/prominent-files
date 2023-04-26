@@ -138,7 +138,7 @@ export default class ProminentStarredFiles extends Plugin {
                     }
                 })
             );
-            if (!!this.bookmarksEnabled) {
+            if (!this.bookmarksEnabled) {
                 new Notice(
                     "The Bookmarks core plugin must be enabled to use this plugin."
                 );
