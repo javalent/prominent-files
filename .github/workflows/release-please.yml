@@ -99,3 +99,15 @@ jobs:
                   name: Prominent Files
                   repo: prominent-files
                   webhook-urls: ${{ secrets.OBSIDIAN_WEBHOOK }}
+    notify-ttrpg:
+        runs-on: ubuntu-latest
+        needs: upload-build
+        steps:
+           - name: Webhook
+             uses: javalent/workflows/actions/discord-embed@main
+             env:
+                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+             with:
+                 name: Fantasy Statblocks
+                 repo: fantasy-statblocks
+                 webhook-urls: ${{ secrets.TTRPG_WEBHOOK }}
